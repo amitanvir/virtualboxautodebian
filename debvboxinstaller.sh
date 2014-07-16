@@ -1,100 +1,75 @@
 #!/bin/bash
-# Install nagios and nagios plugin in RHEL/CentOS/Fedora
 
-############ Script Credit ################
-# This script is forked from http://blog.secaserver.com/2013/04/centos-install-nagios-simple-way/
-### Script updated by Hasan T. Emdad <h.t.emdad@gmail.com>
-### Date: 12-July-2014 ####################
- 
-# Disable SElinux
-#sed -i.bak 's#SELINUX=enforcing#SELINUX=disabled#g' /etc/selinux/config
-#setenforce 0
+########################################################
+### This script is created by Hasn T. Emdad Rumi <h.t.emdad@gmail.com>.
+### Released under GPL 2.0 licensing
+########################################################
+
+# Warning message
+echo -n "CDROM repo need to be disable. if you already disabled it you can hit [ENTER] or else click ctrl+C to terminate..."
+read -t 10 -p "Otherwise auto installation will beging in 10 seconds..."
+echo "Starting installation of Virtualbox Headless Auto Installation. Use at your own risk..."
+
+# Adding repository of Virtualmin instlation direcoty
+echo "deb http://download.virtualbox.org/virtualbox/debian squeeze contrib non-free" >> /etc/apt/sources.list
+wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | apt-key add -
+echo "Virtualbox Public Key Added"
+# Update apt repository
 apt-get update
- 
-# Nagios requirement
-apt-get -y  install perl wget php5-gd apache2 php5 build-essential make openssl  libc6-dev
-# Installation directory
-installdir=/root/nagios
- 
-[ ! -d $installdir ] && mkdir -p $installdir
-rm -Rf $installdir/*
-cd $installdir
- 
-nagios_latest_url='http://linux.mango.com.bd/nagios/nagios-4.0.7.tar.gz'
-nagios_plugin_latest_url='http://linux.mango.com.bd/nagios/nagios-plugins-1.5.tar.gz'
-wget $nagios_latest_url
-wget $nagios_plugin_latest_url
- 
-# Nagios
-nagios_package=`ls -1 | grep nagios | grep -v plugin`
-tar -xzf $nagios_package
-cd nagios-*
- 
-clear
-echo "Installing Nagios.."
-useradd nagios
-./configure
-make all
-make install
-make install-init
-make install-commandmode
-make install-config
-make install-webconf
+echo "Aptitude is updated"
 
+# Start installing Virtualbox with DKMS
+echo "Virtualbox installation is goin on..."
+apt-get install build-essential -y
+apt-get install -y linux-headers-$(uname -r) build-essential virtualbox-4.3 dkms
+echo "Virtualbox Core Installaiton is completed!"
+
+#  Extension pack
+echo "Now installing Extension pack..."
+# cd /tmp
+extpack_url='http://download.virtualbox.org/virtualbox/4.3.12/Oracle_VM_VirtualBox_Extension_Pack-4.3.12-93733.vbox-extpack'
+wget $extpack_url
+VBoxManage  extpack install Oracle*.vbox-extpack
+echo "Extension pack installed"
+
+#Useradd
+echo "Now adding vbox user and group account..."
+useradd -m vbox -G vboxusers
+echo "Enter vbox account password"
+passwd vbox
+echo "vbox user password is updated"
+rm -rf /etc/default/virtualbox
+echo "VBOXWEB_USER=vbox" >> /etc/default/virtualbox
+echo "User profile added for web services..."
+echo "Adding VBoxWebservice on service level-"
+update-rc.d vboxweb-service defaults /etc/init.d/vboxweb-service start
+echo "Service added successfully"
+
+# Web Control Panel
+echo "Now installing Apache with PHP..."
+apt-get install -y apache2-mpm-prefork apache2-utils apache2.2-bin apache2.2-common apache2 apache2-doc apache2-suexec libapache2-mod-php5 libapr1 libaprutil1 libaprutil1-dbd-sqlite3 libaprutil1-ldap libapr1 php5-common php5-mysql php-pear 
 /etc/init.d/apache2 restart
- 
-clear
-echo "Create .htpasswd for nagios"
-htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
- 
-cd $installdir
- 
-# Nagios Plugin
-nagios_plugin_package=`ls -1 | grep nagios-plugin`
-tar -xzf $nagios_plugin_package
-cd nagios-plugin*
- 
-clear
-echo "Installing Nagios Plugin.."
-./configure
-make
-make install
- 
-clear
-echo "Starting Nagios.."
-#chkconfig nagios on
-#service nagios start
-/etc/init.d/nagios start
- 
-echo "Staring Apache.."
-#service httpd restart
-/etc/init.d/apache2 restarts
-# chkconfig httpd on
- 
-# Configure IPtables
-#iptables -I INPUT -m tcp -p tcp --dport 80 -j ACCEPT
-#service iptables save
-clear
- 
-ip_add=`ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'`
+/etc/init.d/vboxweb-service restart
+echo "Web Service with PHP successfully installed"
 
+# PhpVirtualbox
+echo "Installing PHPVirtualbox..."
+rm -rf /var/www/virtualbox
+mkdir /var/www/virtualbox
+cd /tmp
+echo `pwd`
+wget http://linux.mango.com.bd/phpvirtualbox-4.3-1.zip
+apt-get install -y unzip
+unzip phpv*.zip
+cd /tmp/phpv*
+mv * /var/www/virtualbox
+cd /var/www/virtualbox
+# mv config.php-example config.php
 
-l1="  _____           _        _ _          _ _ "
-l2=" |_   _|         | |      | | |        | | |"
-l3="   | |  _ __  ___| |_ __ _| | | ___  __| | |"
-l4="   | | | '_ \/ __| __/ _  | | |/ _ \/ _  | |"
-l5="  _| |_| | | \__ \ || (_| | | |  __/ (_| |_|"
-l6=" |_____|_| |_|___/\__\__,_|_|_|\___|\__,_(_)"
-                                            
-echo "$l1"
-echo "$l2"
-echo "$l3"
-echo "$l4"
-echo "$l5"
-echo "$l6"
-echo "=============================================="                                            
-echo "Connect using browser http://$ip_add/nagios/"
-echo "=============================================="
-echo "username: nagiosadmin"
-echo "password: (nagios password)"
+read -p "Enter your vbox user account password: " mypass
+sed 's/'"'"'pass'"'"'/'"'""$mypass""'"'/g' /var/www/virtualbox/config.php-example > /var/www/virtualbox/config.php
+echo "PHPVirtualbox password updated!!!"
 
+echo "Your installation is completed. Now Sit back and open your browser and point to: http://<your virtualbox server ip>/virtualbox"
+
+echo "enjoy!!!"
