@@ -7,7 +7,7 @@
 
 # Warning message
 echo -n "CDROM repo need to be disable. if you already disabled it you can hit [ENTER] or else click ctrl+C to terminate..."
-read -t 10 -p "Otherwise auto installation will beging in 10 seconds..."
+read -t 10 -p "Otherwise auto installation will begin in 10 seconds..."
 echo "Starting installation of Virtualbox Headless Auto Installation. Use at your own risk..."
 
 # Adding repository of Virtualmin instlation direcoty
